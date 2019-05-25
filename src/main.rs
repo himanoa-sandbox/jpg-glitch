@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate rand;
 #[macro_use] extern crate failure;
 
 use std::io::prelude::*;
@@ -6,6 +7,9 @@ use std::io::{BufReader, Cursor};
 use std::fs::File;
 use std::cell::RefCell;
 use std::fmt;
+use std::u8::{MAX,MIN};
+
+use rand::Rng;
 
 #[derive(Debug, Fail)]
 enum JPGError {
@@ -29,6 +33,7 @@ enum JPGError {
 
 use clap::{App, Arg};
 
+#[derive(Clone)]
 struct JPG {
     pub soi: RefCell<[u8;2]>,
     pub app0: RefCell<[u8;18]>,
@@ -143,11 +148,40 @@ fn parse(binary: &std::vec::Vec<u8>) -> Result<JPG, JPGError> {
     });
 }
 
-fn brakeJpg(jpg: JPG) -> i64 {
-    12
+fn f(b: &u8) -> u8 {
+    if *b == 232 as u8 {
+        return *b - 1 as u8;
+    }
+    *b
+}
+fn break_jpg(_rng: &mut rand::prelude::ThreadRng, jpg: JPG) -> JPG{
+    let broken_bytes = jpg.image.borrow().iter().map(f).collect::<Vec<u8>>();
+    JPG {
+        soi: jpg.soi,
+        app0: jpg.app0,
+        dqt: jpg.dqt,
+        sof0: jpg.sof0,
+        dht: jpg.dht,
+        sos: jpg.sos,
+        image:RefCell::new(broken_bytes)
+    }
+}
+
+fn create_binary(jpg: JPG) -> Vec<u8> {
+    let mut bytes: Vec<u8> = Vec::new();
+    bytes.extend_from_slice(jpg.soi.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.app0.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.dqt.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.sof0.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.dht.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.sos.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.image.borrow().iter().as_slice());
+    bytes.extend_from_slice(&[255 as u8, 217 as u8]);
+    return bytes
 }
 
 fn main() -> std::io::Result<()> {
+    let mut rng = rand::thread_rng();
     let matches = App::new("jpg-glitch")
         .version("1.0")
         .author("himanoa <matsunoappy@gmail.com>")
@@ -158,19 +192,14 @@ fn main() -> std::io::Result<()> {
             .index(1),
             )
         .get_matches();
-    match matches.occurrences_of("v") {
-        0 => println!("No verbose info"),
-        1 => println!("Some verbose info"),
-        2 => println!("Tons of verbose info"),
-        3 | _ => println!("Don't be crazy"),
-    }
     let f = File::open(matches.value_of("INPUT").unwrap())?;
     let mut buffer = vec![];
     let mut reader = BufReader::new(f);
     reader.read_to_end(&mut buffer)?;
     let a = parse(&buffer).unwrap();
-    println!("{}", a);
-    brakeJpg(a);
+    let mut out = std::io::stdout();
+    out.write_all(create_binary(break_jpg(&mut rng, a)).as_slice())?;
+    out.flush()?;
 
     Ok(())
 
