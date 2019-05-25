@@ -170,7 +170,7 @@ fn main() -> std::io::Result<()> {
     reader.read_to_end(&mut buffer)?;
     let a = parse(&buffer).unwrap();
     println!("{}", a);
-    brake();
+    brakeJpg(a);
 
     Ok(())
 
