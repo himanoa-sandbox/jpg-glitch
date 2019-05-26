@@ -5,11 +5,8 @@ extern crate rand;
 use std::io::prelude::*;
 use std::io::{BufReader, Cursor};
 use std::fs::File;
-use std::cell::RefCell;
 use std::fmt;
-use std::u8::{MAX,MIN};
 
-use rand::Rng;
 
 #[derive(Debug, Fail)]
 enum JPGError {
@@ -35,13 +32,13 @@ use clap::{App, Arg};
 
 #[derive(Clone)]
 struct JPG {
-    pub soi: RefCell<[u8;2]>,
-    pub app0: RefCell<[u8;18]>,
-    pub dqt: RefCell<[u8;69 * 2]>,
-    pub sof0: RefCell<[u8;19]>,
-    pub dht: RefCell<[u8;33 + 183 + 33 + 183]>,
-    pub sos: RefCell<[u8;14]>,
-    pub image: RefCell<std::vec::Vec<u8>>,
+    pub soi: [u8;2],
+    pub app0: [u8;18],
+    pub dqt: [u8;69 * 2],
+    pub sof0: [u8;19],
+    pub dht: [u8;33 + 183 + 33 + 183],
+    pub sos: [u8;14],
+    pub image: std::vec::Vec<u8>,
 }
 
 impl fmt::Display for JPG {
@@ -49,13 +46,13 @@ impl fmt::Display for JPG {
         fn formatter(b: &u8) -> String {
             format!("{:x} ", b)
         }
-        let soi = &self.soi.borrow().iter().map(formatter).collect::<String>();
-        let app0 = &self.app0.borrow().iter().map(formatter).collect::<String>();
-        let dqt = &self.dqt.borrow().iter().map(formatter).collect::<String>();
-        let sof0 = &self.sof0.borrow().iter().map(formatter).collect::<String>();
-        let dht = &self.dht.borrow().iter().map(formatter).collect::<String>();
-        let sos = &self.sos.borrow().iter().map(formatter).collect::<String>();
-        let image = &self.image.borrow().iter().map(formatter).collect::<String>();
+        let soi = &self.soi.iter().map(formatter).collect::<String>();
+        let app0 = &self.app0.iter().map(formatter).collect::<String>();
+        let dqt = &self.dqt.iter().map(formatter).collect::<String>();
+        let sof0 = &self.sof0.iter().map(formatter).collect::<String>();
+        let dht = &self.dht.iter().map(formatter).collect::<String>();
+        let sos = &self.sos.iter().map(formatter).collect::<String>();
+        let image = &self.image.iter().map(formatter).collect::<String>();
         write!(
             f,
             "
@@ -138,13 +135,13 @@ fn parse(binary: &std::vec::Vec<u8>) -> Result<JPG, JPGError> {
     }
 
     return Ok(JPG {
-        soi: RefCell::new(soi_buffer),
-        app0: RefCell::new(app0_buffer),
-        dqt: RefCell::new(dqt_buffer),
-        sof0: RefCell::new(sof0_buffer),
-        dht: RefCell::new(dht_buffer),
-        sos: RefCell::new(sos_buffer),
-        image: RefCell::new(image_body)
+        soi: soi_buffer,
+        app0: app0_buffer,
+        dqt: dqt_buffer,
+        sof0: sof0_buffer,
+        dht: dht_buffer,
+        sos: sos_buffer,
+        image: image_body
     });
 }
 
@@ -155,7 +152,7 @@ fn f(b: &u8) -> u8 {
     *b
 }
 fn break_jpg(_rng: &mut rand::prelude::ThreadRng, jpg: JPG) -> JPG{
-    let broken_bytes = jpg.image.borrow().iter().map(f).collect::<Vec<u8>>();
+    let broken_bytes = jpg.image.iter().map(f).collect::<Vec<u8>>();
     JPG {
         soi: jpg.soi,
         app0: jpg.app0,
@@ -163,19 +160,19 @@ fn break_jpg(_rng: &mut rand::prelude::ThreadRng, jpg: JPG) -> JPG{
         sof0: jpg.sof0,
         dht: jpg.dht,
         sos: jpg.sos,
-        image:RefCell::new(broken_bytes)
+        image:broken_bytes
     }
 }
 
 fn create_binary(jpg: JPG) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::new();
-    bytes.extend_from_slice(jpg.soi.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.app0.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.dqt.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.sof0.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.dht.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.sos.borrow().iter().as_slice());
-    bytes.extend_from_slice(jpg.image.borrow().iter().as_slice());
+    bytes.extend_from_slice(jpg.soi.iter().as_slice());
+    bytes.extend_from_slice(jpg.app0.iter().as_slice());
+    bytes.extend_from_slice(jpg.dqt.iter().as_slice());
+    bytes.extend_from_slice(jpg.sof0.iter().as_slice());
+    bytes.extend_from_slice(jpg.dht.iter().as_slice());
+    bytes.extend_from_slice(jpg.sos.iter().as_slice());
+    bytes.extend_from_slice(jpg.image.iter().as_slice());
     bytes.extend_from_slice(&[255 as u8, 217 as u8]);
     return bytes
 }
